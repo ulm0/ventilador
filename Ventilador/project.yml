@@ -1,0 +1,122 @@
+name: Ventilador
+options:
+  bundleIdPrefix: com.ulm0
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    CODE_SIGN_STYLE: Manual
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+  configs:
+    Release:
+      ENABLE_HARDENED_RUNTIME: YES
+targets:
+  Ventilador:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+        excludes:
+          - "Watchdog/HelperMain.swift"
+          - "Watchdog/com.ulm0.ventilador.helper.plist"
+      - path: Sources/Watchdog/com.ulm0.ventilador.helper.plist
+        buildPhase:
+          copyFiles:
+            destination: wrapper
+            subpath: Contents/Library/LaunchDaemons
+    dependencies:
+      - target: Watchdog
+        embed: true
+        codeSign: true
+        copy:
+          destination: executables
+    info:
+      path: Info.plist
+      properties:
+        CFBundleName: Ventilador
+        CFBundleDisplayName: Ventilador
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        LSUIElement: true
+    entitlements:
+      path: Ventilador.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ulm0.ventilador
+        PRODUCT_NAME: Ventilador
+  Watchdog:
+    type: tool
+    platform: macOS
+    sources:
+      - Sources/Watchdog/HelperMain.swift
+      - Sources/Watchdog/FanHelperProtocol.swift
+      - Sources/Watchdog/WatchdogCore.swift
+      - Sources/Watchdog/HelperService.swift
+      - Sources/Watchdog/HelperRuntime.swift
+      - Sources/SMC/FanControlError.swift
+      - Sources/SMC/FanControlling.swift
+      - Sources/SMC/SMCParamStruct.swift
+      - Sources/SMC/SMCConnection.swift
+      - Sources/SMC/IOKitSMCController.swift
+      - Sources/Control/Fan.swift
+      - Sources/Control/TemperatureReading.swift
+      - Sources/Control/Clamping.swift
+    entitlements:
+      path: Helper.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+    settings:
+      base:
+        PRODUCT_NAME: com.ulm0.ventilador.helper
+        PRODUCT_BUNDLE_IDENTIFIER: com.ulm0.ventilador.helper
+        GENERATE_INFOPLIST_FILE: YES
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+        SKIP_INSTALL: YES
+  ControlLogicTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/ControlLogicTests
+      - Tests/Mocks
+    dependencies:
+      - target: Ventilador
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ulm0.ventilador.ControlLogicTests
+        GENERATE_INFOPLIST_FILE: YES
+  RegressionTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/RegressionTests
+      - Tests/Mocks
+    dependencies:
+      - target: Ventilador
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ulm0.ventilador.RegressionTests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Ventilador:
+    build:
+      targets:
+        Ventilador: all
+        ControlLogicTests: [test]
+        RegressionTests: [test]
+    test:
+      config: Debug
+      gatherCoverageData: true
+      coverageTargets:
+        - Ventilador
+      targets:
+        - RegressionTests
+        - ControlLogicTests

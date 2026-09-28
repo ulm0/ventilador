@@ -1,0 +1,19 @@
+# Build output and generated project (run `xcodegen generate` in Ventilador/)
+Ventilador/build/
+Ventilador/Ventilador.xcodeproj/
+DerivedData/
+*.xcresult
+
+# Personal signing identity (see Ventilador/Config/Signing.xcconfig)
+Ventilador/Config/Signing.local.xcconfig
+
+# Local AI-assistant and tooling state (Claude Code, graphify)
+.claude/
+CLAUDE.md
+graphify-out/
+
+# Spec Kit working documents (.specify/ itself is kept)
+specs/
+
+# macOS
+.DS_Store
