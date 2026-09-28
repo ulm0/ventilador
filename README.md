@@ -78,19 +78,18 @@ cd Ventilador
 
 Runs the regression and unit suites and fails unless every source file has 100% line coverage. It must run on
 real Apple Silicon hardware: a few tests read (never write) the live SMC. Regression tests, which exercise the
-app-to-helper path end to end against a simulated SMC, carry most of the weight. The project's rules live in
-the [constitution](.specify/memory/constitution.md).
+app-to-helper path end to end against a simulated SMC, carry most of the weight. Rules of the project: safety first, 100% coverage, regression tests over unit tests.
 
 ## Project layout
 
 ```
 Ventilador/          Xcode project (generated from project.yml), sources and tests
-.specify/            Spec Kit configuration and the project constitution
 ```
 
 ## Status
 
-Personal project, not yet published as a release or a Homebrew cask.
+Personal project. No release is published yet; the release and Homebrew flow is documented in
+[RELEASING.md](RELEASING.md).
 
 ## License
 
