@@ -76,13 +76,21 @@ final class MockHelperInstaller: HelperInstalling {
     var status: SMAppService.Status = .notRegistered
     var statusAfterRegister: SMAppService.Status = .requiresApproval
     var registerError: Error?
+    var unregisterError: Error?
     private(set) var registerCount = 0
+    private(set) var unregisterCount = 0
     private(set) var openCount = 0
 
     func register() throws {
         registerCount += 1
         if let registerError { throw registerError }
         status = statusAfterRegister
+    }
+
+    @MainActor func unregister() async throws {
+        unregisterCount += 1
+        status = .notRegistered
+        if let unregisterError { throw unregisterError }
     }
 
     func openSystemSettings() {

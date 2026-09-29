@@ -10,6 +10,12 @@ enum HelperConstants {
     /// Syntactically valid, never satisfiable: used when the app's signature can't be read (fail closed).
     static let denyAllRequirement = "identifier \"\(appBundleIdentifier)\" and !identifier \"\(appBundleIdentifier)\""
 
+    /// CFBundleVersion of the app bundle at `app`, or 0 when it can't be read.
+    static func build(ofAppAt app: URL?) -> Int {
+        let text = app.flatMap { Bundle(url: $0) }?.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+        return text.flatMap { Int($0) } ?? 0
+    }
+
     /// The app bundle that embeds this helper at Contents/MacOS/.
     static func containingApp(ofHelperAt executable: URL?) -> URL? {
         executable?.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
@@ -63,4 +69,6 @@ enum HeartbeatReply {
     func revertToAutomatic(reply: @escaping (String?) -> Void)
     /// Replies a HeartbeatReply value for the caller's override.
     func heartbeat(reply: @escaping (Int) -> Void)
+    /// Replies the build number (CFBundleVersion) of the app this helper process was started from.
+    func version(reply: @escaping (Int) -> Void)
 }

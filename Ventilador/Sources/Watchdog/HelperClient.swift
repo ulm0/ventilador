@@ -44,7 +44,7 @@ private final class ReplyBox<T: Sendable>: @unchecked Sendable {
 /// Calls are made from the main thread, so a helper that is stopped, hung or not approved must never be able
 /// to freeze the app: every call waits at most `callTimeout`, and after a timeout further calls fail at once
 /// for `cooldown` seconds instead of blocking again.
-final class HelperClient {
+final class HelperClient: @unchecked Sendable {
     static let defaultCallTimeout: TimeInterval = 2
     static let defaultCooldown: TimeInterval = 10
     static let notRespondingMessage = "privileged helper not responding"
@@ -89,6 +89,21 @@ final class HelperClient {
         case HeartbeatReply.revertPending: return .revertPending
         default: return .overrideEnded
         }
+    }
+
+    /// The build number the running helper reports, or nil when it doesn't answer — which is also what a helper
+    /// from before this call existed looks like.
+    func helperBuild() -> Int? {
+        guard case .success(let build) = call({ proxy, reply in proxy.version(reply: reply) }) else { return nil }
+        return build
+    }
+
+    /// `helperBuild()` over a private, short-lived connection, so it is safe off the main thread and a timeout
+    /// here never puts the app's own client into its cooldown.
+    func probeBuild() -> Int? {
+        let probe = HelperClient(callTimeout: callTimeout, cooldown: cooldown, now: now, makeConnection: makeConnection)
+        defer { probe.invalidate() }
+        return probe.helperBuild()
     }
 
     func invalidate() {

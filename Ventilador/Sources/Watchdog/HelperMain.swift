@@ -13,7 +13,7 @@ enum HelperMain {
             exit(EXIT_FAILURE)
         }
         let app = HelperConstants.containingApp(ofHelperAt: Bundle.main.executableURL)
-        let runtime = HelperRuntime(service: HelperService(controller: IOKitSMCController(connection: connection)),
+        let runtime = HelperRuntime(service: HelperService(controller: IOKitSMCController(connection: connection), build: HelperConstants.build(ofAppAt: app)),
                                     listener: NSXPCListener(machServiceName: HelperConstants.machServiceName),
                                     clientRequirement: { HelperConstants.clientRequirement(forAppAt: app) },
                                     exit: { exit(EXIT_SUCCESS) })

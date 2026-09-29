@@ -29,11 +29,13 @@ final class HelperService: NSObject, FanHelperProtocol {
 
     let clock: () -> Date
     private let controller: FanControlling
+    private let build: Int
     private let state = Guarded(State())
     private let logger = Logger(subsystem: HelperConstants.machServiceName, category: "watchdog")
 
-    init(controller: FanControlling, clock: @escaping () -> Date = monotonicNow) {
+    init(controller: FanControlling, build: Int = 0, clock: @escaping () -> Date = monotonicNow) {
         self.controller = controller
+        self.build = build
         self.clock = clock
     }
 
@@ -103,6 +105,10 @@ final class HelperService: NSObject, FanHelperProtocol {
             if state.watchdog.revertPending { return HeartbeatReply.revertPending }
             return state.watchdog.heartbeat(at: clock()) ? HeartbeatReply.active : HeartbeatReply.noOverride
         })
+    }
+
+    func version(reply: @escaping (Int) -> Void) {
+        reply(build)
     }
 
     func tick() {

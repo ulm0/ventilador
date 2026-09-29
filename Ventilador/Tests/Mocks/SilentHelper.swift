@@ -50,4 +50,5 @@ final class SilentHelper: NSObject, FanHelperProtocol, NSXPCListenerDelegate, @u
     func setTargetRPM(fanID: String, rpm: Int, reply: @escaping (String?) -> Void) { respond(reply, with: nil) }
     func revertToAutomatic(reply: @escaping (String?) -> Void) { respond(reply, with: nil) }
     func heartbeat(reply: @escaping (Int) -> Void) { respond(reply, with: HeartbeatReply.active) }
+    func version(reply: @escaping (Int) -> Void) { respond(reply, with: 5) }
 }
