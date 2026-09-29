@@ -19,18 +19,18 @@ final class AppEnvironment {
     static var showsMenuBarIcon: Bool { !isHostingTests }
 
     init(controller: FanControlling, heartbeat: HeartbeatEmitting, log: ControlEventLog, installer: HelperInstalling,
-         menuBar: MenuBarSettings = MenuBarSettings(), pollInterval: TimeInterval = 1, clock: @escaping () -> Date = Date.init) {
+         expectedBuild: Int = 0, probe: (@Sendable () -> Int?)? = nil, menuBar: MenuBarSettings = MenuBarSettings(), pollInterval: TimeInterval = 1, clock: @escaping () -> Date = Date.init) {
         self.log = log
         store = ControlModeStore(controller: controller, log: log, heartbeat: heartbeat, clock: clock)
         status = StatusViewModel(controller: controller, store: store, interval: pollInterval, clock: clock)
         manual = ManualControlModel(store: store, status: status)
-        helperInstall = HelperInstallModel(installer: installer)
+        helperInstall = HelperInstallModel(installer: installer, expectedBuild: expectedBuild, probe: probe)
         self.menuBar = menuBar
     }
 
     /// The app's entry point. When hosting XCTest the app stays inert — no SMC, no polling, no helper,
     /// no writes to the user's real event log — so tests only ever exercise what they build themselves.
-    static func launch(hostingTests: Bool = isHostingTests, helper: HelperClient = .privileged(), logURL: URL = ControlEventLog.defaultURL,
+    @MainActor static func launch(hostingTests: Bool = isHostingTests, helper: HelperClient = .privileged(), logURL: URL = ControlEventLog.defaultURL,
                        installer: HelperInstalling = SMAppServiceHelperInstaller()) -> AppEnvironment {
         guard !hostingTests else {
             let scratchLog = FileManager.default.temporaryDirectory.appendingPathComponent("Ventilador-test-host/events.jsonl")
@@ -38,6 +38,7 @@ final class AppEnvironment {
         }
         let environment = live(helper: helper, logURL: logURL, installer: installer)
         environment.start()
+        Task { @MainActor in await environment.helperInstall.selfHeal() }
         return environment
     }
 
@@ -47,7 +48,8 @@ final class AppEnvironment {
         return AppEnvironment(controller: PrivilegedFanController(reader: reader, helper: helper),
                               heartbeat: HeartbeatEmitter(beat: helper.heartbeat),
                               log: ControlEventLog(fileURL: logURL),
-                              installer: installer)
+                              installer: installer, expectedBuild: HelperConstants.build(ofAppAt: Bundle.main.bundleURL),
+                              probe: helper.probeBuild)
     }
 
     func start(workspace: NotificationCenter = NSWorkspace.shared.notificationCenter, app: NotificationCenter = .default) {

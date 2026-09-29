@@ -9,6 +9,10 @@ func registerDaemon(_ service: SMAppService) throws {
     try service.register()
 }
 
+@MainActor func unregisterDaemon(_ service: SMAppService) async throws {
+    try await service.unregister()
+}
+
 func openLoginItemsSettings() {
     SMAppService.openSystemSettingsLoginItems()
 }

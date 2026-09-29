@@ -11,6 +11,7 @@ enum StatusSection: Hashable {
     case manualControls
     case profiles
     case approveHelper
+    case repairHelper
     case enableHelper
     case helperError(String)
     case clampNotice(String)
@@ -59,7 +60,7 @@ struct StatusView: View {
     }
 
     private var helperSections: [StatusSection] {
-        if helper.status == .enabled { return [.manualControls, .profiles] }
+        if helper.status == .enabled { return [.manualControls, .profiles] + (helper.needsRepair ? [.repairHelper] : []) }
         if helper.status == .requiresApproval { return [.approveHelper] }
         return [.enableHelper] + (helper.errorMessage.map { [.helperError($0)] } ?? [])
     }
@@ -100,6 +101,9 @@ struct StatusView: View {
         case .approveHelper:
             Text("Approve the Ventilador helper in System Settings › General › Login Items to control fans.").font(.caption)
             Button("Open System Settings", action: helper.openSettings)
+        case .repairHelper:
+            Text("The helper isn't responding as this version of Ventilador. Repairing reinstalls it; fans return to automatic meanwhile.").font(.caption)
+            Button(helper.isRepairing ? "Repairing…" : "Repair Helper", action: helper.repairInBackground).disabled(helper.isRepairing)
         case .enableHelper:
             Text("Changing fan speed needs a small privileged helper: the fan controller only accepts commands from an administrator process.").font(.caption)
             Button("Enable Fan Control", action: helper.enable)

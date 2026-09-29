@@ -12,9 +12,9 @@ import Foundation
     private let delegate: HelperListenerDelegate
     private(set) var connectionsOpened = 0
 
-    init(fans: [(min: Double, max: Double, actual: Double)] = [(1000, 4900, 1200)], ftst: Bool = false, requirement: String? = nil) {
+    init(fans: [(min: Double, max: Double, actual: Double)] = [(1000, 4900, 1200)], ftst: Bool = false, requirement: String? = nil, build: Int = 0) {
         smc = .appleSilicon(fans: fans, ftst: ftst)
-        service = HelperService(controller: IOKitSMCController(connection: smc), clock: helperClock.read)
+        service = HelperService(controller: IOKitSMCController(connection: smc), build: build, clock: helperClock.read)
         delegate = HelperListenerDelegate(service: service)
         if let requirement { listener.setConnectionCodeSigningRequirement(requirement) }
         listener.delegate = delegate
