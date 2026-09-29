@@ -59,6 +59,26 @@ brew install --cask <user>/tap/ventilador
 After installing, they click **Enable Fan Control** in the popover and approve Ventilador in
 *System Settings > General > Login Items & Extensions*.
 
+## Releasing from Xcode (no `notarytool` profile needed)
+
+Xcode notarizes with the Apple ID you are signed in with, so this route skips the app-specific password.
+
+1. Bump `MARKETING_VERSION` in `Ventilador/project.yml`, run `xcodegen generate`, and archive: Product > Archive.
+2. In the Organizer choose **Distribute App > Direct Distribution** (Developer ID). Do **not** choose *App Store
+   Connect*: Ventilador cannot be sandboxed (the sandbox blocks `AppleSMC` and root helpers), so the Mac App Store
+   is not an option.
+3. When the Organizer shows the build as ready, **Export** the notarized app.
+4. Package it. This checks the signatures and the stapled ticket, zips the app and writes the cask:
+   ```bash
+   cd Ventilador
+   DEVELOPMENT_TEAM=<TEAMID> scripts/release.sh --package-only /path/to/exported/Ventilador.app
+   ```
+5. Publish as described above (`gh release create`, then copy `dist/ventilador.rb` into the tap).
+
+If signing fails with `The timestamp service is not available`, something on your machine is blocking plain HTTP
+(port 80) for `codesign`, which fetches Apple's secure timestamp over HTTP. A network content filter such as Cisco
+Secure Client can do this. Sign and notarize from another machine, or from CI.
+
 ## Dry run without the paid account
 
 ```bash

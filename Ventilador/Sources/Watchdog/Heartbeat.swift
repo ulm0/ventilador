@@ -43,7 +43,8 @@ final class HeartbeatEmitter: HeartbeatEmitting {
     func start() {
         guard timer == nil else { return }
         activity = activities.beginActivity(options: Self.activityOptions, reason: "Fan override heartbeat")
-        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in self?.fire() }
+        let emitter = MainThreadRef(self)
+        let timer = Timer(timeInterval: interval, repeats: true) { _ in emitter.value?.fire() }
         // .common keeps beating while a slider drag holds the run loop in tracking mode.
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer

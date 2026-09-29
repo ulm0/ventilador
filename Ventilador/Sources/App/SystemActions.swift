@@ -14,5 +14,6 @@ func openLoginItemsSettings() {
 }
 
 func quitApplication() {
-    NSApplication.shared.terminate(nil)
+    // Called from a button action, which always runs on the main thread.
+    MainActor.assumeIsolated { NSApplication.shared.terminate(nil) }
 }
