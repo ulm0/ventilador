@@ -10,13 +10,57 @@ enum HeartbeatStatus: Equatable {
     case helperUnreachable
 }
 
-/// App-side XPC client for the privileged helper.
-// ponytail: synchronous XPC on the caller's thread; switch to async replies if the helper ever does slow work.
-final class HelperClient {
-    private let makeConnection: () -> NSXPCConnection
-    private var connection: NSXPCConnection?
+/// Why a round trip failed, as the message the user will see.
+private struct TransportFailure: Error, Sendable {
+    let message: String
+}
 
-    init(makeConnection: @escaping () -> NSXPCConnection) {
+/// One reply slot shared between the caller and the XPC reply queue. The first outcome wins; anything that
+/// arrives after the caller gave up (a late reply) is ignored.
+private final class ReplyBox<T: Sendable>: @unchecked Sendable {
+    private let condition = NSCondition()
+    private var outcome: Result<T, TransportFailure>?
+
+    func fulfil(_ result: Result<T, TransportFailure>) {
+        condition.lock()
+        if outcome == nil { outcome = result }
+        condition.broadcast()
+        condition.unlock()
+    }
+
+    func wait(timeout: TimeInterval) -> Result<T, TransportFailure>? {
+        let deadline = Date().addingTimeInterval(timeout)
+        condition.lock()
+        defer { condition.unlock() }
+        while outcome == nil {
+            if !condition.wait(until: deadline) { break }
+        }
+        return outcome
+    }
+}
+
+/// App-side XPC client for the privileged helper.
+///
+/// Calls are made from the main thread, so a helper that is stopped, hung or not approved must never be able
+/// to freeze the app: every call waits at most `callTimeout`, and after a timeout further calls fail at once
+/// for `cooldown` seconds instead of blocking again.
+final class HelperClient {
+    static let defaultCallTimeout: TimeInterval = 2
+    static let defaultCooldown: TimeInterval = 10
+    static let notRespondingMessage = "privileged helper not responding"
+
+    private let makeConnection: () -> NSXPCConnection
+    private let callTimeout: TimeInterval
+    private let cooldown: TimeInterval
+    private let now: () -> Date
+    private var connection: NSXPCConnection?
+    private var unresponsiveUntil: Date?
+
+    init(callTimeout: TimeInterval = HelperClient.defaultCallTimeout, cooldown: TimeInterval = HelperClient.defaultCooldown,
+         now: @escaping () -> Date = Date.init, makeConnection: @escaping () -> NSXPCConnection) {
+        self.callTimeout = callTimeout
+        self.cooldown = cooldown
+        self.now = now
         self.makeConnection = makeConnection
     }
 
@@ -30,18 +74,16 @@ final class HelperClient {
     }
 
     func setTargetRPM(fanID: Fan.ID, rpm: Int) throws {
-        var replyError: String?
-        try check(exchange { $0.setTargetRPM(fanID: fanID, rpm: rpm) { replyError = $0 } }, replyError)
+        try check(call { proxy, reply in proxy.setTargetRPM(fanID: fanID, rpm: rpm, reply: reply) })
     }
 
     func revertToAutomatic() throws {
-        var replyError: String?
-        try check(exchange { $0.revertToAutomatic { replyError = $0 } }, replyError)
+        try check(call { proxy, reply in proxy.revertToAutomatic(reply: reply) })
     }
 
     func heartbeat() -> HeartbeatStatus {
-        var reply = HeartbeatReply.noOverride
-        guard exchange({ $0.heartbeat { reply = $0 } }) == nil else { return .helperUnreachable }
+        let result: Result<Int, TransportFailure> = call { proxy, reply in proxy.heartbeat(reply: reply) }
+        guard case .success(let reply) = result else { return .helperUnreachable }
         switch reply {
         case HeartbeatReply.active: return .active
         case HeartbeatReply.revertPending: return .revertPending
@@ -54,19 +96,33 @@ final class HelperClient {
         connection = nil
     }
 
-    private func check(_ transportError: String?, _ replyError: String?) throws {
-        if let transportError { throw FanControlError.writeFailed(detail: transportError) }
-        if let replyError { throw FanControlError.helperRejected(message: replyError) }
+    private func check(_ result: Result<String?, TransportFailure>) throws {
+        switch result {
+        case .failure(let failure): throw FanControlError.writeFailed(detail: failure.message)
+        case .success(let replyError?): throw FanControlError.helperRejected(message: replyError)
+        case .success(nil): break
+        }
     }
 
-    /// One synchronous round trip. Returns the transport error message; a failed link is dropped so the next call reconnects.
-    private func exchange(_ body: (FanHelperProtocol) -> Void) -> String? {
-        var transportError: String?
+    /// One round trip. A failed or silent link is dropped so the next call reconnects (or, after a timeout, fails fast).
+    private func call<T: Sendable>(_ invoke: (FanHelperProtocol, @escaping @Sendable (T) -> Void) -> Void) -> Result<T, TransportFailure> {
+        if let until = unresponsiveUntil {
+            guard now() >= until else { return .failure(TransportFailure(message: Self.notRespondingMessage)) }
+            unresponsiveUntil = nil
+        }
+        let box = ReplyBox<T>()
         let link = connection ?? open()
-        let proxy = link.synchronousRemoteObjectProxyWithErrorHandler { transportError = "privileged helper unavailable (\($0.localizedDescription))" }
-        body(proxy as! FanHelperProtocol)
-        if transportError != nil { invalidate() }
-        return transportError
+        let proxy = link.remoteObjectProxyWithErrorHandler { error in
+            box.fulfil(.failure(TransportFailure(message: "privileged helper unavailable (\(error.localizedDescription))")))
+        }
+        invoke(proxy as! FanHelperProtocol) { box.fulfil(.success($0)) }
+        guard let result = box.wait(timeout: callTimeout) else {
+            invalidate()
+            unresponsiveUntil = now().addingTimeInterval(cooldown)
+            return .failure(TransportFailure(message: Self.notRespondingMessage))
+        }
+        if case .failure = result { invalidate() }
+        return result
     }
 
     private func open() -> NSXPCConnection {
