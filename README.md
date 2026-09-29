@@ -38,6 +38,27 @@ profile, and always hands control back to macOS when something goes wrong.
 Tested on a Mac mini (M4 Pro). Other models expose slightly different sensors and may need tuning; please open
 an issue if fan control doesn't respond on yours.
 
+## Install
+
+### Homebrew
+
+```bash
+brew tap ulm0/tap                    # add the tap once
+brew install --cask ventilador
+```
+
+`brew install --cask ulm0/tap/ventilador` does both steps at once. Update with `brew upgrade --cask ventilador`
+and remove with `brew uninstall --cask ventilador` (add `--zap` to also delete preferences and logs).
+
+### Manual
+
+Download `Ventilador-<version>.zip` from the [latest release](https://github.com/ulm0/ventilador/releases/latest),
+unzip it and move `Ventilador.app` to `/Applications`. The app is signed with a Developer ID and notarized by Apple;
+each release also publishes a `.sha256` file to check the download.
+
+Open it, click **Enable Fan Control** in the menu bar popover, and approve Ventilador in *System Settings > General >
+Login Items & Extensions*. Reading temperatures and speeds needs no approval; only changing fan speed does.
+
 ## Build and run
 
 ```bash
@@ -88,8 +109,8 @@ Ventilador/          Xcode project (generated from project.yml), sources and tes
 
 ## Status
 
-Personal project. No release is published yet; the release and Homebrew flow is documented in
-[RELEASING.md](RELEASING.md).
+Personal project. See [releases](https://github.com/ulm0/ventilador/releases) for the current version; how
+releases are built and published is documented in [RELEASING.md](RELEASING.md).
 
 ## License
 
