@@ -7,13 +7,15 @@ DerivedData/
 # Personal signing identity (see Ventilador/Config/Signing.xcconfig)
 Ventilador/Config/Signing.local.xcconfig
 
-# Local AI-assistant and tooling state (Claude Code, graphify)
+# Local AI-assistant and Spec Kit state
 .claude/
 CLAUDE.md
 graphify-out/
-
-# Spec Kit working documents (.specify/ itself is kept)
+.specify/
 specs/
 
 # macOS
 .DS_Store
+
+# Release artifacts (see RELEASING.md)
+Ventilador/dist/
