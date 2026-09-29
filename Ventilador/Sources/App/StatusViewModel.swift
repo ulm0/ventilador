@@ -31,7 +31,8 @@ final class StatusViewModel: ObservableObject {
     func start() {
         guard timer == nil else { return }
         refresh()
-        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in self?.refresh() }
+        let model = MainThreadRef(self)
+        let timer = Timer(timeInterval: interval, repeats: true) { _ in model.value?.refresh() }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
     }

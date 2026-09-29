@@ -1,9 +1,10 @@
-// Default signing for everyone: ad-hoc (no Apple account needed). Enough to build and run the tests.
-// Registering the privileged helper on macOS needs a real signature, so to run the app for real create
-// Config/Signing.local.xcconfig (git-ignored) with your own identity:
+// "Automatically manage signing" for everyone. With no team this signs ad-hoc ("Sign to Run Locally"), which
+// is enough to build and run the tests. Registering the privileged helper on macOS needs a real signature,
+// so to run the app for real create Config/Signing.local.xcconfig (git-ignored) with your own identity:
 //
 //   CODE_SIGN_IDENTITY = Apple Development
 //   DEVELOPMENT_TEAM = YOURTEAMID
+CODE_SIGN_STYLE = Automatic
 CODE_SIGN_IDENTITY = -
 DEVELOPMENT_TEAM =
 

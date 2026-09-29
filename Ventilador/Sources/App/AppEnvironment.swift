@@ -53,9 +53,10 @@ final class AppEnvironment {
     func start(workspace: NotificationCenter = NSWorkspace.shared.notificationCenter, app: NotificationCenter = .default) {
         store.reconcileLog()
         status.start()
+        let store = MainThreadRef(store)
         observers = [
-            workspace.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [store] _ in store.systemDidWake() },
-            app.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [store] _ in store.appWillTerminate() },
+            workspace.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { _ in store.value?.systemDidWake() },
+            app.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { _ in store.value?.appWillTerminate() },
         ]
     }
 }
